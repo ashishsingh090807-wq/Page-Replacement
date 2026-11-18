@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OS Page Replacement Algorithms Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080b12;
+      --bg-panel: rgba(13, 20, 36, 0.75);
+      --bg-card: rgba(18, 28, 52, 0.85);
+      --border-color: rgba(0, 243, 255, 0.2);
+      --border-glow: rgba(0, 243, 255, 0.5);
+
+      --neon-cyan: #00f3ff;
+      --neon-pink: #ff007f;
+      --neon-green: #00ff88;
+      --neon-purple: #9d00ff;
+      --neon-amber: #ffaa00;
+      --neon-blue: #0077ff;
+
+      --text-main: #e2e8f0;
+      --text-muted: #8899b5;
+
+      --hit-color: #00ff88;
+      --hit-glow: rgba(0, 255, 136, 0.35);
+      --fault-color: #ff0055;
+      --fault-glow: rgba(255, 0, 85, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(0, 243, 255, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(255, 0, 127, 0.08) 0%, transparent 45%),
+        linear-gradient(rgba(0, 243, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 35px 35px, 35px 35px;
+      color: var(--text-main);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 1.5rem;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(8, 11, 18, 0.8);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--neon-cyan);
+      border-radius: 4px;
+      box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .title-glitch {
+      font-family: 'Orbitron', monospace;
+      font-size: 2.3rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--neon-cyan) 0%, #ffffff 50%, var(--neon-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 25px rgba(0, 243, 255, 0.5);
+      margin-bottom: 0.3rem;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      color: var(--neon-cyan);
+      opacity: 0.85;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Container layout */
+    .dashboard {
+      max-width: 1450px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.8rem;
+    }
+
+    /* Cyber Glass Card */
+    .cyber-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      position: relative;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 243, 255, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .cyber-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 12px; height: 12px;
+      border-top: 2px solid var(--neon-cyan);
+      border-left: 2px solid var(--neon-cyan);
+    }
+
+    .cyber-panel::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 12px; height: 12px;
+      border-bottom: 2px solid var(--neon-pink);
+      border-right: 2px solid var(--neon-pink);
+    }
+
+    /* Controls Grid */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      align-items: end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      color: var(--neon-cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    input, select {
+      background: rgba(10, 16, 30, 0.9);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.95rem;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      transition: all 0.25s ease;
+      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+    }
+
+    input:focus, select:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2);
+    }
+
+    select option {
+      background: #090e1a;
+      color: #fff;
+    }
+
+    .presets-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.4rem;
+    }
+
+    .preset-pill {
+      font-size: 0.75rem;
+      background: rgba(0, 243, 255, 0.1);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      color: var(--neon-cyan);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .preset-pill:hover {
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .cyber-btn {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 0.65rem 1.1rem;
+      border: 1px solid currentColor;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.25s ease;
+    }
+
+    .cyber-btn-cyan {
+      color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    }
+    .cyber-btn-cyan:hover:not(:disabled) {
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-cyan);
+      transform: translateY(-2px);
+    }
+
+    .cyber-btn-pink {
+      color: var(--neon-pink);
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
+    }
+    .cyber-btn-pink:hover:not(:disabled) {
+      background: var(--neon-pink);
+      color: #fff;
+      box-shadow: 0 0 20px var(--neon-pink);
+      transform: translateY(-2px);
+    }
+
+    .cyber-btn-purple {
+      color: var(--neon-purple);
+      box-shadow: 0 0 10px rgba(157, 0, 255, 0.2);
+    }
+    .cyber-btn-purple:hover:not(:disabled) {
+      background: var(--neon-purple);
+      color: #fff;
+      box-shadow: 0 0 20px var(--neon-purple);
+      transform: translateY(-2px);
+    }
+
+    .cyber-btn-green {
+      color: var(--neon-green);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+    }
+    .cyber-btn-green:hover:not(:disabled) {
+      background: var(--neon-green);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-green);
+      transform: translateY(-2px);
+    }
+
+    .cyber-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Algorithm description banner */
+    .algo-banner {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      border-left: 3px solid var(--neon-cyan);
+      padding-left: 1rem;
+      margin-top: 0.8rem;
+    }
+
+    .algo-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.15rem;
+      color: var(--neon-cyan);
+    }
+
+    .algo-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    /* Stream ribbon */
+    .stream-container {
+      margin-top: 1rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .stream-track {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-width: max-content;
+      padding: 0.4rem;
+    }
+
+    .stream-chip {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Fira Code', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .stream-chip.active {
+      border-color: var(--neon-cyan);
+      color: #fff;
+      background: rgba(0, 243, 255, 0.25);
+      box-shadow: 0 0 16px var(--neon-cyan), inset 0 0 8px var(--neon-cyan);
+      transform: scale(1.15);
+      z-index: 2;
+    }
+
+    .stream-chip.done {
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #64748b;
+      background: rgba(20, 27, 45, 0.4);
+    }
+
+    .stream-chip.hit {
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+    }
+
+    .stream-chip.fault {
+      border-color: var(--neon-pink);
+      color: var(--neon-pink);
+    }
+
+    /* Visualizer Section */
+    .vis-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 980px) {
+      .vis-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Frame slots UI */
+    .frames-hud {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .hud-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 1.5px;
+      color: var(--neon-cyan);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+      padding-bottom: 0.5rem;
+    }
+
+    .frames-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .frame-box {
+      border-radius: 8px;
+      border: 1px solid rgba(0, 243, 255, 0.2);
+      background: rgba(14, 22, 40, 0.95);
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.35s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .frame-box.hit-glow {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 20px var(--hit-glow), inset 0 0 10px var(--hit-glow);
+      animation: pulseGreen 0.6s ease;
+    }
+
+    .frame-box.fault-glow {
+      border-color: var(--neon-pink);
+      box-shadow: 0 0 20px var(--fault-glow), inset 0 0 10px var(--fault-glow);
+      animation: pulsePink 0.6s ease;
+    }
+
+    .frame-box.victim-glow {
+      border-color: var(--neon-amber);
+      box-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
+    }
+
+    @keyframes pulseGreen {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes pulsePink {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
+
+    .frame-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .frame-value {
+      font-family: 'Fira Code', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffffff;
+      min-width: 45px;
+      height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .frame-meta {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      color: var(--neon-cyan);
+      opacity: 0.8;
+    }
+
+    /* Live Status Banner */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      font-family: 'Orbitron', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-top: 0.5rem;
+    }
+
+    .status-badge.hit {
+      background: rgba(0, 255, 136, 0.15);
+      border: 1px solid var(--neon-green);
+      color: var(--neon-green);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.25);
+    }
+
+    .status-badge.fault {
+      background: rgba(255, 0, 85, 0.15);
+      border: 1px solid var(--neon-pink);
+      color: var(--neon-pink);
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.25);
+    }
+
+    .status-badge.idle {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+
+    /* Step explanation log */
+    .step-log-box {
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 6px;
+      border-left: 3px solid var(--neon-cyan);
+      padding: 0.6rem 0.8rem;
+      min-height: 50px;
+      line-height: 1.4;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* Simulation Table */
+    .table-container {
+      overflow-x: auto;
+      max-height: 480px;
+    }
+
+    table.neon-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      text-align: center;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .neon-table th, .neon-table td {
+      padding: 0.65rem 0.5rem;
+      border: 1px solid rgba(0, 243, 255, 0.12);
+      font-size: 0.85rem;
+    }
+
+    .neon-table th {
+      background: rgba(8, 14, 28, 0.95);
+      color: var(--neon-cyan);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 2px solid var(--neon-cyan);
+    }
+
+    .neon-table th.header-ref {
+      color: #fff;
+      background: rgba(0, 243, 255, 0.2);
+    }
+
+    .neon-table tbody tr {
+      background: rgba(14, 21, 38, 0.6);
+      transition: background 0.2s;
+    }
+
+    .neon-table tbody tr:hover {
+      background: rgba(20, 32, 60, 0.8);
+    }
+
+    .cell-hit {
+      color: var(--neon-green);
+      font-weight: 700;
+      text-shadow: 0 0 8px var(--hit-glow);
+    }
+
+    .cell-fault {
+      color: var(--neon-pink);
+      font-weight: 700;
+      text-shadow: 0 0 8px var(--fault-glow);
+    }
+
+    .cell-page-added {
+      background: rgba(255, 0, 127, 0.15);
+      color: #fff;
+      font-weight: bold;
+      border: 1px solid rgba(255, 0, 127, 0.4);
+    }
+
+    .cell-page-hit {
+      background: rgba(0, 255, 136, 0.15);
+      color: #fff;
+      font-weight: bold;
+      border: 1px solid rgba(0, 255, 136, 0.4);
+    }
+
+    /* Comparison Matrix */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1rem;
+    }
+
+    .matrix-card {
+      border: 1px solid rgba(0, 243, 255, 0.25);
+      border-radius: 10px;
+      background: rgba(10, 16, 32, 0.8);
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.25s, border-color 0.25s;
+    }
+
+    .matrix-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--neon-cyan);
+    }
+
+    .matrix-card.best {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+    }
+
+    .matrix-card.best::after {
+      content: 'BEST HIT RATE';
+      position: absolute;
+      top: 10px; right: -25px;
+      background: var(--neon-green);
+      color: #000;
+      font-size: 0.6rem;
+      font-weight: 900;
+      padding: 2px 25px;
+      transform: rotate(45deg);
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .matrix-algo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.5rem;
+    }
+
+    .matrix-algo-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .matrix-stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.95rem;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-family: 'Fira Code', monospace;
+      font-weight: 700;
+    }
+
+    .rate-bar-bg {
+      height: 8px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.2rem;
+    }
+
+    .rate-bar-fill {
+      height: 100%;
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+
+    /* Metrics Summary strip */
+    .metrics-ribbon {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.8rem;
+    }
+
+    .metric-box {
+      background: rgba(14, 21, 38, 0.85);
+      border: 1px solid rgba(0, 243, 255, 0.2);
+      border-radius: 8px;
+      padding: 0.8rem;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 0.2rem;
+    }
+
+    .metric-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Speed Slider */
+    .speed-slider {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .speed-slider input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(0, 243, 255, 0.2);
+      outline: none;
+      padding: 0;
+    }
+
+    .speed-slider input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--neon-cyan);
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 class="title-glitch">PAGE REPLACEMENT SIMULATOR</h1>
+    <div class="subtitle">Virtual Memory Management // FIFO • LRU • MRU • OPTIMAL</div>
+  </header>
+
+  <main class="dashboard">
+
+    <!-- Controls Panel -->
+    <section class="cyber-panel">
+      <div class="controls-grid">
+        <div class="form-group" style="grid-column: span 2;">
+          <label for="referenceString">Reference String (Page Requests)</label>
+          <input type="text" id="referenceString" value="7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1" placeholder="e.g. 7, 0, 1, 2, 0, 3...">
+          <div class="presets-row">
+            <span style="font-size: 0.75rem; color: var(--text-muted); align-self: center;">Presets:</span>
+            <button class="preset-pill" onclick="applyPreset('standard')">Standard OS Example</button>
+            <button class="preset-pill" onclick="applyPreset('belady')">Belady's Anomaly Demo</button>
+            <button class="preset-pill" onclick="applyPreset('cyclic')">Cyclic Pattern</button>
+            <button class="preset-pill" onclick="generateRandomRef()">Random Gen</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="frameCount">Frame Capacity</label>
+          <input type="number" id="frameCount" min="1" max="8" value="3">
+        </div>
+
+        <div class="form-group">
+          <label for="algorithmSelect">Algorithm Mode</label>
+          <select id="algorithmSelect">
+            <option value="FIFO">FIFO (First-In, First-Out)</option>
+            <option value="LRU">LRU (Least Recently Used)</option>
+            <option value="MRU">MRU (Most Recently Used)</option>
+            <option value="OPTIMAL">Optimal (Belady's Min)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="algo-banner" id="algoBanner">
+        <div class="algo-title" id="algoName">FIFO (First-In, First-Out)</div>
+        <div class="algo-desc" id="algoDescription">Replaces the page that arrived earliest into the memory queue regardless of how frequently it is accessed.</div>
+      </div>
+
+      <!-- Playback Controls -->
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: 1.2rem; gap: 1rem;">
+        <div class="btn-group">
+          <button class="cyber-btn cyber-btn-cyan" id="btnPlay" onclick="togglePlay()">
+            <span id="playIcon">▶</span> <span id="playText">Auto Play</span>
+          </button>
+          <button class="cyber-btn cyber-btn-purple" id="btnStep" onclick="stepSimulation()">
+            ⏭ Step Forward
+          </button>
+          <button class="cyber-btn cyber-btn-pink" id="btnReset" onclick="resetSimulation()">
+            🔄 Reset
+          </button>
+          <button class="cyber-btn cyber-btn-green" onclick="runComparison()">
+            📊 Compare All Algorithms
+          </button>
+        </div>
+
+        <div class="speed-slider">
+          <label style="font-size: 0.8rem; color: var(--neon-cyan); font-family: 'Orbitron';">SPEED</label>
+          <input type="range" id="speedSlider" min="200" max="2000" step="100" value="900">
+          <span id="speedVal" style="font-family: 'Fira Code'; font-size: 0.85rem; color: var(--text-muted); min-width: 45px;">0.9s</span>
+        </div>
+      </div>
+
+      <!-- Stream Ribbon -->
+      <div class="stream-container">
+        <div class="stream-track" id="streamTrack"></div>
+      </div>
+    </section>
+
+    <!-- Visualizer & Real-time Matrix -->
+    <div class="vis-layout">
+      <!-- Active Memory HUD -->
+      <section class="cyber-panel frames-hud">
+        <div class="hud-title">
+          <span>PHYSICAL FRAMES</span>
+          <span id="stepCounter" style="font-family: 'Fira Code'; font-size: 0.85rem; color: var(--neon-cyan);">STEP: 0 / 0</span>
+        </div>
+
+        <div class="frames-container" id="framesContainer">
+          <!-- Dynamic Frames injected here -->
+        </div>
+
+        <div class="status-badge idle" id="liveStatusBadge">
+          <span>STATUS:</span>
+          <span id="liveStatusText">READY</span>
+        </div>
+
+        <div class="step-log-box" id="stepExplanation">
+          Configure reference stream and click <strong>Step Forward</strong> or <strong>Auto Play</strong> to begin memory simulation.
+        </div>
+
+        <!-- Live mini statistics -->
+        <div class="metrics-ribbon" style="margin-top: auto;">
+          <div class="metric-box">
+            <div class="metric-title">Page Faults</div>
+            <div class="metric-val" id="metricFaults" style="color: var(--neon-pink);">0</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Page Hits</div>
+            <div class="metric-val" id="metricHits" style="color: var(--neon-green);">0</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-title">Hit Ratio</div>
+            <div class="metric-val" id="metricRatio" style="color: var(--neon-cyan);">0%</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step-by-Step Table Trace -->
+      <section class="cyber-panel">
+        <div class="hud-title" style="margin-bottom: 0.8rem;">
+          <span>EXECUTION TRACE MATRIX</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">STEPWISE FRAME STATE</span>
+        </div>
+        <div class="table-container">
+          <table class="neon-table" id="simulationTable">
+            <thead>
+              <tr id="tableHeader">
+                <th>TIME</th>
+                <th class="header-ref">PAGE</th>
+                <!-- Dynamically generated frames headers -->
+                <th>OUTCOME</th>
+                <th>EVICTED</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Dynamically rendered steps -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Comparative Analytics Section -->
+    <section class="cyber-panel" id="comparisonSection">
+      <div class="hud-title">
+        <span>MULTI-ALGORITHM BENCHMARK MATRIX</span>
+        <span style="font-size: 0.75rem; color: var(--neon-cyan);">INSTANT BATCH ANALYSIS</span>
+      </div>
+      <div class="matrix-grid" id="comparisonGrid">
+        <!-- Injected comparison cards -->
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    OPERATING SYSTEM SIMULATION ENGINE // NEON ARCHITECTURE // HIGH-PERFORMANCE VIRTUAL MEMORY SIMULATOR
+  </footer>
+
+  <script>
+    // --- Algorithm Metadata ---
+    const ALGO_DETAILS = {
+      FIFO: {
+        name: "FIFO (First-In, First-Out)",
+        desc: "Replaces the oldest page in memory. It functions like a standard FIFO queue. Simple to implement, but may suffer from Belady's Anomaly where adding more frames can cause more faults."
+      },
+      LRU: {
+        name: "LRU (Least Recently Used)",
+        desc: "Replaces the page that has not been referenced for the longest period of time. Approximates Optimal by looking backward into recent historical access patterns."
+      },
+      MRU: {
+        name: "MRU (Most Recently Used)",
+        desc: "Replaces the page that was accessed most recently. Ideal for situations where once a page is accessed, it is unlikely to be needed immediately again (such as scanning massive tables)."
+      },
+      OPTIMAL: {
+        name: "Optimal (Belady's Min Algorithm)",
+        desc: "Replaces the page that will not be used for the longest period of time in the future. Guarantees the lowest possible page fault rate, serving as a theoretical benchmark."
+      }
+    };
+
+    // --- State variables ---
+    let refPages = [];
+    let capacity = 3;
+    let selectedAlgo = 'FIFO';
+    let simulationSteps = [];
+    let currentStepIndex = -1;
+    let isPlaying = false;
+    let playTimer = null;
+
+    // --- DOM Elements ---
+    const refInput = document.getElementById('referenceString');
+    const frameInput = document.getElementById('frameCount');
+    const algoSelect = document.getElementById('algorithmSelect');
+    const algoNameEl = document.getElementById('algoName');
+    const algoDescEl = document.getElementById('algoDescription');
+    const streamTrack = document.getElementById('streamTrack');
+    const framesContainer = document.getElementById('framesContainer');
+    const tableHeader = document.getElementById('tableHeader');
+    const tableBody = document.getElementById('tableBody');
+    const liveStatusBadge = document.getElementById('liveStatusBadge');
+    const liveStatusText = document.getElementById('liveStatusText');
+    const stepExplanation = document.getElementById('stepExplanation');
+    const stepCounter = document.getElementById('stepCounter');
+    const metricFaults = document.getElementById('metricFaults');
+    const metricHits = document.getElementById('metricHits');
+    const metricRatio = document.getElementById('metricRatio');
+    const btnPlay = document.getElementById('btnPlay');
+    const playIcon = document.getElementById('playIcon');
+    const playText = document.getElementById('playText');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedVal = document.getElementById('speedVal');
+    const comparisonGrid = document.getElementById('comparisonGrid');
+
+    // --- Listeners ---
+    speedSlider.addEventListener('input', (e) => {
+      speedVal.textContent = (e.target.value / 1000).toFixed(1) + 's';
+      if (isPlaying) {
+        clearInterval(playTimer);
+        playTimer = setInterval(stepSimulation, parseInt(speedSlider.value));
+      }
+    });
+
+    algoSelect.addEventListener('change', () => {
+      selectedAlgo = algoSelect.value;
+      algoNameEl.textContent = ALGO_DETAILS[selectedAlgo].name;
+      algoDescEl.textContent = ALGO_DETAILS[selectedAlgo].desc;
+      resetSimulation();
+      runComparison();
+    });
+
+    refInput.addEventListener('change', () => {
+      resetSimulation();
+      runComparison();
+    });
+
+    frameInput.addEventListener('change', () => {
+      let val = parseInt(frameInput.value);
+      if (isNaN(val) || val < 1) val = 1;
+      if (val > 8) val = 8;
+      frameInput.value = val;
+      resetSimulation();
+      runComparison();
+    });
+
+    // Preset handler
+    function applyPreset(type) {
+      if (type === 'standard') {
+        refInput.value = "7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1";
+        frameInput.value = 3;
+      } else if (type === 'belady') {
+        // Known Belady anomaly sequence for FIFO: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5
+        refInput.value = "1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5";
+        frameInput.value = 3;
+      } else if (type === 'cyclic') {
+        refInput.value = "1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4";
+        frameInput.value = 3;
+      }
+      resetSimulation();
+      runComparison();
+    }
+
+    function generateRandomRef() {
+      const len = 15 + Math.floor(Math.random() * 8);
+      const arr = [];
+      for (let i = 0; i < len; i++) {
+        arr.push(Math.floor(Math.random() * 8));
+      }
+      refInput.value = arr.join(', ');
+      resetSimulation();
+      runComparison();
+    }
+
+    // --- Parser ---
+    function parseReferenceString(str) {
+      return str
+        .split(/[\s,]+/)
+        .map(x => x.trim())
+        .filter(x => x.length > 0)
+        .map(x => parseInt(x))
+        .filter(x => !isNaN(x));
+    }
+
+    // --- Core Simulation Computation ---
+    function computeAlgorithmTrace(algo, pages, frameCap) {
+      const steps = [];
+      const currentFrames = [];
+      // Aux tracking
+      const arrivalTime = {}; // For FIFO: page -> step index inserted
+      const lastUsed = {};    // For LRU / MRU: page -> step index accessed
+      let hits = 0;
+      let faults = 0;
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const isHit = currentFrames.includes(page);
+        let evicted = null;
+        let explanation = "";
+
+        if (isHit) {
+          hits++;
+          lastUsed[page] = i;
+          explanation = `Hit: Page ${page} is already in physical memory. No replacement needed.`;
+        } else {
+          faults++;
+          if (currentFrames.length < frameCap) {
+            // Free slot available
+            currentFrames.push(page);
+            arrivalTime[page] = i;
+            lastUsed[page] = i;
+            explanation = `Page Fault: Free frame available. Page ${page} loaded directly into frame ${currentFrames.length - 1}.`;
+          } else {
+            // Must replace
+            let victimIdx = -1;
+
+            if (algo === 'FIFO') {
+              // Earliest arrival
+              let oldestStep = Infinity;
+              for (let f = 0; f < currentFrames.length; f++) {
+                const p = currentFrames[f];
+                if (arrivalTime[p] < oldestStep) {
+                  oldestStep = arrivalTime[p];
+                  victimIdx = f;
+                }
+              }
+              evicted = currentFrames[victimIdx];
+              explanation = `Page Fault: Memory full. FIFO evicted oldest page ${evicted} (loaded at step ${oldestStep + 1}) to load page ${page}.`;
+            } else if (algo === 'LRU') {
+              // Least recently accessed
+              let oldestUse = Infinity;
+              for (let f = 0; f < currentFrames.length; f++) {
+                const p = currentFrames[f];
+                if (lastUsed[p] < oldestUse) {
+                  oldestUse = lastUsed[p];
+                  victimIdx = f;
+                }
+              }
+              evicted = currentFrames[victimIdx];
+              explanation = `Page Fault: Memory full. LRU evicted least recently used page ${evicted} (last accessed step ${oldestUse + 1}) for page ${page}.`;
+            } else if (algo === 'MRU') {
+              // Most recently accessed
+              let newestUse = -Infinity;
+              for (let f = 0; f < currentFrames.length; f++) {
+                const p = currentFrames[f];
+                if (lastUsed[p] > newestUse) {
+                  newestUse = lastUsed[p];
+                  victimIdx = f;
+                }
+              }
+              evicted = currentFrames[victimIdx];
+              explanation = `Page Fault: Memory full. MRU evicted most recently used page ${evicted} (last accessed step ${newestUse + 1}) for page ${page}.`;
+            } else if (algo === 'OPTIMAL') {
+              // Furthest future reference or not used again
+              let furthest = -1;
+              let bestIdx = 0;
+              let victimCandidateReason = "";
+
+              for (let f = 0; f < currentFrames.length; f++) {
+                const p = currentFrames[f];
+                // Look forward from index i + 1
+                let nextUse = Infinity;
+                for (let k = i + 1; k < pages.length; k++) {
+                  if (pages[k] === p) {
+                    nextUse = k;
+                    break;
+                  }
+                }
+
+                if (nextUse === Infinity) {
+                  bestIdx = f;
+                  victimCandidateReason = `never referenced again`;
+                  break; // Can't be worse than never
+                } else if (nextUse > furthest) {
+                  furthest = nextUse;
+                  bestIdx = f;
+                  victimCandidateReason = `not referenced until step ${furthest + 1}`;
+                }
+              }
+              victimIdx = bestIdx;
+              evicted = currentFrames[victimIdx];
+              explanation = `Page Fault: Memory full. Optimal evicted page ${evicted} (${victimCandidateReason}) to make room for page ${page}.`;
+            }
+
+            // Perform eviction and replacement
+            currentFrames[victimIdx] = page;
+            arrivalTime[page] = i;
+            lastUsed[page] = i;
+          }
+        }
+
+        // Snapshot of memory state
+        steps.push({
+          step: i,
+          page: page,
+          frames: [...currentFrames],
+          isHit: isHit,
+          evicted: evicted,
+          explanation: explanation,
+          hitsSoFar: hits,
+          faultsSoFar: faults,
+          hitRatio: ((hits / (i + 1)) * 100).toFixed(1)
+        });
+      }
+
+      return {
+        algo,
+        pagesCount: pages.length,
+        capacity: frameCap,
+        hits,
+        faults,
+        hitRatio: pages.length > 0 ? ((hits / pages.length) * 100).toFixed(1) : 0,
+        faultRatio: pages.length > 0 ? ((faults / pages.length) * 100).toFixed(1) : 0,
+        steps
+      };
+    }
+
+    // --- Reset & Re-render Setup ---
+    function resetSimulation() {
+      if (isPlaying) togglePlay();
+
+      refPages = parseReferenceString(refInput.value);
+      capacity = parseInt(frameInput.value) || 3;
+      selectedAlgo = algoSelect.value;
+
+      const simulationResult = computeAlgorithmTrace(selectedAlgo, refPages, capacity);
+      simulationSteps = simulationResult.steps;
+      currentStepIndex = -1;
+
+      renderStreamRibbon();
+      setupFrameBoxes();
+      setupTraceTable();
+      updateMetricsToStep(-1);
+    }
+
+    function renderStreamRibbon() {
+      streamTrack.innerHTML = '';
+      refPages.forEach((pg, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'stream-chip';
+        chip.id = `stream-chip-${idx}`;
+        chip.textContent = pg;
+        chip.title = `Step ${idx + 1}: Request Page ${pg}`;
+        streamTrack.appendChild(chip);
+      });
+    }
+
+    function setupFrameBoxes() {
+      framesContainer.innerHTML = '';
+      for (let i = 0; i < capacity; i++) {
+        const box = document.createElement('div');
+        box.className = 'frame-box';
+        box.id = `frame-slot-${i}`;
+        box.innerHTML = `
+          <div>
+            <div class="frame-label">FRAME [${i}]</div>
+            <div class="frame-meta" id="frame-meta-${i}">EMPTY</div>
+          </div>
+          <div class="frame-value" id="frame-val-${i}">-</div>
+        `;
+        framesContainer.appendChild(box);
+      }
+    }
+
+    function setupTraceTable() {
+      // Rebuild Header
+      tableHeader.innerHTML = `
+        <th>STEP</th>
+        <th class="header-ref">PAGE</th>
+      `;
+      for (let i = 0; i < capacity; i++) {
+        const th = document.createElement('th');
+        th.textContent = `F${i}`;
+        tableHeader.appendChild(th);
+      }
+      tableHeader.innerHTML += `
+        <th>OUTCOME</th>
+        <th>EVICTED</th>
+      `;
+
+      tableBody.innerHTML = '';
+    }
+
+    // --- Step Progression ---
+    function stepSimulation() {
+      if (simulationSteps.length === 0) return;
+      if (currentStepIndex >= simulationSteps.length - 1) {
+        if (isPlaying) togglePlay();
+        return;
+      }
+
+      currentStepIndex++;
+      applyStepState(currentStepIndex);
+    }
+
+    function applyStepState(stepIdx) {
+      const stepData = simulationSteps[stepIdx];
+
+      // Update Stream Ribbon
+      refPages.forEach((_, i) => {
+        const chip = document.getElementById(`stream-chip-${i}`);
+        if (!chip) return;
+        chip.classList.remove('active');
+        if (i < stepIdx) {
+          chip.classList.add('done');
+        } else if (i === stepIdx) {
+          chip.classList.remove('done');
+          chip.classList.add('active');
+          if (stepData.isHit) {
+            chip.classList.add('hit');
+          } else {
+            chip.classList.add('fault');
+          }
+          // Scroll active chip into view smoothly
+          chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } else {
+          chip.classList.remove('done', 'hit', 'fault');
+        }
+      });
+
+      // Update Frames Display
+      for (let f = 0; f < capacity; f++) {
+        const box = document.getElementById(`frame-slot-${f}`);
+        const valEl = document.getElementById(`frame-val-${f}`);
+        const metaEl = document.getElementById(`frame-meta-${f}`);
+
+        box.classList.remove('hit-glow', 'fault-glow', 'victim-glow');
+
+        if (f < stepData.frames.length) {
+          const pageVal = stepData.frames[f];
+          valEl.textContent = pageVal;
+
+          if (pageVal === stepData.page) {
+            if (stepData.isHit) {
+              box.classList.add('hit-glow');
+              metaEl.textContent = 'HIT';
+              metaEl.style.color = 'var(--neon-green)';
+            } else {
+              box.classList.add('fault-glow');
+              metaEl.textContent = stepData.evicted !== null ? 'REPLACED' : 'LOADED';
+              metaEl.style.color = 'var(--neon-pink)';
+            }
+          } else {
+            metaEl.textContent = 'ACTIVE';
+            metaEl.style.color = 'var(--neon-cyan)';
+          }
+        } else {
+          valEl.textContent = '-';
+          metaEl.textContent = 'EMPTY';
+          metaEl.style.color = 'var(--text-muted)';
+        }
+      }
+
+      // Update Live Status Badge
+      liveStatusBadge.className = `status-badge ${stepData.isHit ? 'hit' : 'fault'}`;
+      liveStatusText.textContent = stepData.isHit ? `PAGE HIT (P: ${stepData.page})` : `PAGE FAULT (P: ${stepData.page})`;
+
+      // Step Explanation
+      stepExplanation.innerHTML = `<strong>Step ${stepIdx + 1}:</strong> ${stepData.explanation}`;
+      stepCounter.textContent = `STEP: ${stepIdx + 1} / ${simulationSteps.length}`;
+
+      // Append row to Trace Table
+      appendTableRow(stepData);
+
+      // Update Metrics
+      updateMetricsToStep(stepIdx);
+    }
+
+    function appendTableRow(stepData) {
+      const row = document.createElement('tr');
+
+      let frameCells = '';
+      for (let f = 0; f < capacity; f++) {
+        if (f < stepData.frames.length) {
+          const p = stepData.frames[f];
+          let extraClass = '';
+          if (p === stepData.page) {
+            extraClass = stepData.isHit ? 'cell-page-hit' : 'cell-page-added';
+          }
+          frameCells += `<td class="${extraClass}">${p}</td>`;
+        } else {
+          frameCells += `<td style="color: rgba(255,255,255,0.2);">-</td>`;
+        }
+      }
+
+      row.innerHTML = `
+        <td style="color: var(--neon-cyan);">${stepData.step + 1}</td>
+        <td style="font-weight: 700; color: #fff; background: rgba(0, 243, 255, 0.08);">${stepData.page}</td>
+        ${frameCells}
+        <td class="${stepData.isHit ? 'cell-hit' : 'cell-fault'}">
+          ${stepData.isHit ? '✔ HIT' : '✖ FAULT'}
+        </td>
+        <td style="color: var(--neon-amber);">${stepData.evicted !== null ? stepData.evicted : '-'}</td>
+      `;
+
+      tableBody.appendChild(row);
+
+      // Scroll table to bottom
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function updateMetricsToStep(stepIdx) {
+      if (stepIdx < 0) {
+        metricFaults.textContent = '0';
+        metricHits.textContent = '0';
+        metricRatio.textContent = '0%';
+        stepCounter.textContent = `STEP: 0 / ${simulationSteps.length}`;
+        liveStatusBadge.className = 'status-badge idle';
+        liveStatusText.textContent = 'READY';
+        stepExplanation.innerHTML = `Configure reference stream and click <strong>Step Forward</strong> or <strong>Auto Play</strong> to begin memory simulation.`;
+        return;
+      }
+      const data = simulationSteps[stepIdx];
+      metricFaults.textContent = data.faultsSoFar;
+      metricHits.textContent = data.hitsSoFar;
+      metricRatio.textContent = `${data.hitRatio}%`;
+    }
+
+    // --- Play / Pause ---
+    function togglePlay() {
+      if (simulationSteps.length === 0) return;
+
+      if (isPlaying) {
+        clearInterval(playTimer);
+        isPlaying = false;
+        playIcon.textContent = '▶';
+        playText.textContent = 'Auto Play';
+        btnPlay.classList.replace('cyber-btn-pink', 'cyber-btn-cyan');
+      } else {
+        if (currentStepIndex >= simulationSteps.length - 1) {
+          resetSimulation();
+        }
+        isPlaying = true;
+        playIcon.textContent = '⏸';
+        playText.textContent = 'Pause';
+        btnPlay.classList.replace('cyber-btn-cyan', 'cyber-btn-pink');
+        playTimer = setInterval(stepSimulation, parseInt(speedSlider.value));
+      }
+    }
+
+    // --- Batch Comparison Matrix ---
+    function runComparison() {
+      const pages = parseReferenceString(refInput.value);
+      const cap = parseInt(frameInput.value) || 3;
+      if (pages.length === 0) return;
+
+      const algos = ['FIFO', 'LRU', 'MRU', 'OPTIMAL'];
+      const results = algos.map(alg => computeAlgorithmTrace(alg, pages, cap));
+
+      // Find max hits / best hit ratio
+      const maxHits = Math.max(...results.map(r => r.hits));
+
+      comparisonGrid.innerHTML = '';
+      results.forEach(res => {
+        const isBest = res.hits === maxHits && maxHits > 0;
+        const card = document.createElement('div');
+        card.className = `matrix-card ${isBest ? 'best' : ''}`;
+
+        let barColor = 'var(--neon-cyan)';
+        if (res.algo === 'OPTIMAL') barColor = 'var(--neon-green)';
+        if (res.algo === 'FIFO') barColor = 'var(--neon-pink)';
+        if (res.algo === 'LRU') barColor = 'var(--neon-purple)';
+        if (res.algo === 'MRU') barColor = 'var(--neon-amber)';
+
+        card.innerHTML = `
+          <div class="matrix-algo-header">
+            <span class="matrix-algo-name" style="color: ${barColor}">${res.algo}</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-family: 'Fira Code';">Cap: ${cap}</span>
+          </div>
+          <div class="matrix-stat-row">
+            <span class="stat-label">Page Faults:</span>
+            <span class="stat-val" style="color: var(--neon-pink);">${res.faults}</span>
+          </div>
+          <div class="matrix-stat-row">
+            <span class="stat-label">Page Hits:</span>
+            <span class="stat-val" style="color: var(--neon-green);">${res.hits}</span>
+          </div>
+          <div class="matrix-stat-row">
+            <span class="stat-label">Hit Ratio:</span>
+            <span class="stat-val" style="color: var(--neon-cyan);">${res.hitRatio}%</span>
+          </div>
+          <div>
+            <div class="rate-bar-bg">
+              <div class="rate-bar-fill" style="width: ${res.hitRatio}%; background: ${barColor}; box-shadow: 0 0 10px ${barColor};"></div>
+            </div>
+          </div>
+          <button class="cyber-btn cyber-btn-cyan" style="margin-top: 0.5rem; font-size: 0.75rem; padding: 0.4rem 0.6rem;" onclick="loadAndRunAlgo('${res.algo}')">
+            Load & Trace ${res.algo}
+          </button>
+        `;
+        comparisonGrid.appendChild(card);
+      });
+    }
+
+    function loadAndRunAlgo(algo) {
+      algoSelect.value = algo;
+      selectedAlgo = algo;
+      algoNameEl.textContent = ALGO_DETAILS[selectedAlgo].name;
+      algoDescEl.textContent = ALGO_DETAILS[selectedAlgo].desc;
+      resetSimulation();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Initial boot
+    window.addEventListener('DOMContentLoaded', () => {
+      resetSimulation();
+      runComparison();
+    });
+  </script>
+</body>
+</html>
